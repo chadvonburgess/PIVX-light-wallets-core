@@ -21,12 +21,12 @@ public class PivtrumGlobalData {
     //"192.168.0.3"; //"185.101.98.175" "185.101.98.230";
 
     public static final String[] TRUSTED_NODES_TESTNET = new String[]{ //MAINNET_NODE,"185.101.98.146"};
-       "95.216.164.161", "159.69.88.150", "159.69.18.145", "95.216.164.167" , "159.69.12.84", "95.216.164.133", "95.216.164.172", "95.216.164.145"};
+       "144.202.90.204"};
      //FURSZY_TESTNET_SERVER, "2001:470:1f11:1d4:b81a:24ff:fea3:cd76", "2001:470:1f11:1d4:58f5:6ff:fe80", MAINNET_NODE};
             //"node.pivxwiki.org", "panther.pivxwiki.org", "pivx.warrows.fr"};
 
     public static final String[] TRUSTED_NODES_MAINNET = new String[]{
-            "140.82.38.63"//"node.pivxwiki.org","x5.pivx.seed.fuzzbawls.pw", "x5.pivx.seed2.fuzzbawls.pw"
+            "144.202.90.204 "//"node.pivxwiki.org","x5.pivx.seed.fuzzbawls.pw", "x5.pivx.seed2.fuzzbawls.pw"
     };
 
 
@@ -43,5 +43,4 @@ public class PivtrumGlobalData {
         }
         return list;
     }
-
 }

@@ -11,16 +11,14 @@ public interface WalletConfiguration {
 
 
     // DNS discovery only
-    void setDSNDiscovery(boolean isEnabled);
-    boolean isDNSDiscoveryEnabled();
+//    void setDSNDiscovery(boolean isEnabled);
+
 
     int getTrustedNodePort();
 
     String getTrustedNodeHost();
 
     void saveTrustedNode(String host,int port);
-    void cleanTrustedNode();
-
     void saveScheduleBlockchainService(long time);
 
     long getScheduledBLockchainService();
@@ -55,5 +53,5 @@ public interface WalletConfiguration {
 
     int getProtocolVersion();
 
-    void maybeIncrementBestChainHeightEver(int lastBlockSeenHeight);
+//    void maybeIncrementBestChainHeightEver(int lastBlockSeenHeight);
 }

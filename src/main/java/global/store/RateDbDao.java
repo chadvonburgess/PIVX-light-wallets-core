@@ -1,6 +1,6 @@
 package global.store;
 
-import global.PivxRate;
+import global.N8VRate;
 
 /**
  * Created by furszy on 3/3/18.
@@ -8,9 +8,9 @@ import global.PivxRate;
 
 public interface RateDbDao<T> extends AbstractDbDao<T>{
 
-    PivxRate getRate(String coin);
+    N8VRate getRate(String coin);
 
 
-    void insertOrUpdateIfExist(PivxRate pivxRate);
+    void insertOrUpdateIfExist(N8VRate n8VRate);
 
 }

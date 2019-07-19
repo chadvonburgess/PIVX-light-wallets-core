@@ -43,7 +43,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import global.utils.Iso8601Format;
-import host.furszy.zerocoinj.wallet.MultiWallet;
 
 public class WalletUtils
 {
@@ -143,35 +142,10 @@ public class WalletUtils
 		}
 	}
 
-	public static MultiWallet restoreMultiWalletFromProtobufOrBase58(final InputStream is, final NetworkParameters expectedNetworkParameters,long backupMaxChars) throws IOException {
-		is.mark((int) backupMaxChars);
-
-		try
-		{
-			return restoreMultiWalletFromProtobuf(is, expectedNetworkParameters);
-		}
-		catch (final IOException x) {
-			throw new IOException("cannot read protobuf" + x.getMessage(), x);
-		}
-	}
 
 	public static Wallet restoreWalletFromProtobuf(final InputStream is, final NetworkParameters expectedNetworkParameters) throws IOException {
 		try {
 			final Wallet wallet = new WalletProtobufSerializer().readWallet(is, true, null);
-			if (!wallet.getParams().equals(expectedNetworkParameters))
-				throw new IOException("bad wallet backup network parameters: " + wallet.getParams().getId());
-			if (!wallet.isConsistent())
-				throw new IOException("inconsistent wallet backup");
-
-			return wallet;
-		} catch (final UnreadableWalletException x) {
-			throw new IOException("unreadable wallet", x);
-		}
-	}
-
-	public static MultiWallet restoreMultiWalletFromProtobuf(final InputStream is, final NetworkParameters expectedNetworkParameters) throws IOException {
-		try {
-			final MultiWallet wallet = new WalletProtobufSerializer().readMultiWallet(is, false, null);
 			if (!wallet.getParams().equals(expectedNetworkParameters))
 				throw new IOException("bad wallet backup network parameters: " + wallet.getParams().getId());
 			if (!wallet.isConsistent())

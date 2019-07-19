@@ -20,7 +20,7 @@ public interface AbstractDbDao<T> {
 
     void updateFieldByKey(String whereColumn,String whereValue, String updateColumn, boolean updateValue);
 
-    int updateByKey(String whereColumn,String whereValue, T t);
+    void updateByKey(String whereColumn,String whereValue, T t);
 
     int updateFieldByKey(String whereColumn,String whereValue, String updateColumn, String updateValue);
 

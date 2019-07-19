@@ -1,10 +1,5 @@
 package global;
 
-import com.zerocoinj.core.CoinDenomination;
-import com.zerocoinj.core.CoinSpend;
-import com.zerocoinj.core.ZCoin;
-import com.zerocoinj.utils.JniBridgeWrapper;
-
 import org.pivxj.core.Address;
 import org.pivxj.core.Coin;
 import org.pivxj.core.Context;
@@ -25,6 +20,7 @@ import org.pivxj.script.Script;
 import org.pivxj.wallet.DeterministicKeyChain;
 import org.pivxj.wallet.SendRequest;
 import org.pivxj.wallet.UnreadableWalletException;
+import org.pivxj.wallet.Wallet;
 import org.pivxj.wallet.exceptions.RequestFailedErrorcodeException;
 import org.pivxj.wallet.listeners.WalletCoinsReceivedEventListener;
 import org.slf4j.Logger;
@@ -58,11 +54,8 @@ import global.exceptions.ContactAlreadyExistException;
 import global.exceptions.NoPeerConnectedException;
 import org.spongycastle.crypto.params.KeyParameter;
 import org.spongycastle.util.encoders.Base64;
-
-import host.furszy.zerocoinj.wallet.AmountPerDen;
-import host.furszy.zerocoinj.wallet.CannotSpendCoinsException;
-import host.furszy.zerocoinj.wallet.MultiWallet;
 import wallet.exceptions.CantRestoreEncryptedWallet;
+
 import wallet.exceptions.InsufficientInputsException;
 import wallet.exceptions.TxNotFoundException;
 import wallet.WalletManager;
@@ -71,9 +64,9 @@ import wallet.WalletManager;
  * Created by mati on 18/04/17.
  */
 
-public class PivxModuleImp implements PivxModule {
+public class N8VModuleImp implements N8VModule {
 
-    private static final Logger logger = LoggerFactory.getLogger(PivxModuleImp.class);
+    private static final Logger logger = LoggerFactory.getLogger(N8VModuleImp.class);
 
     private ContextWrapper context;
     private WalletConfiguration walletConfiguration;
@@ -89,7 +82,7 @@ public class PivxModuleImp implements PivxModule {
     // OS dependent helper.
     private BackupHelper backupHelper;
 
-    public PivxModuleImp(ContextWrapper contextWrapper, WalletConfiguration walletConfiguration,ContactsStoreDao contactsStore,RateDbDao rateDb,BackupHelper backupHelper) {
+    public N8VModuleImp(ContextWrapper contextWrapper, WalletConfiguration walletConfiguration, ContactsStoreDao contactsStore, RateDbDao rateDb, BackupHelper backupHelper) {
         this.context = contextWrapper;
         this.walletConfiguration = walletConfiguration;
         this.contactsStore = contactsStore;
@@ -108,13 +101,12 @@ public class PivxModuleImp implements PivxModule {
     public void createWallet() {
 
     }
-
     @Override
     public boolean backupWallet(File backupFile, String password) throws IOException {
         return walletManager.backupWallet(backupFile,password);
     }
 
-    private boolean backupWallet(MultiWallet wallet,File backupFile, String password) throws IOException {
+    private boolean backupWallet(Wallet wallet,File backupFile, String password) throws IOException {
         return walletManager.backupWallet(wallet,backupFile,password);
     }
 
@@ -125,21 +117,23 @@ public class PivxModuleImp implements PivxModule {
     }
 
     @Override
-    public void restoreWalletFromEncrypted(File file, String password, int forceRestoreVersion) throws CantRestoreEncryptedWallet, IOException {
-        try {
-            int version = (forceRestoreVersion != -1) ? forceRestoreVersion : context.getCurrentVersionNumber();
-            try {
-                String filename = file.getName();
-                // try to determine the version from the file's name
-                version = Integer.parseInt(filename.substring(0, 1));
-            } catch (Exception e) {
-                // swallow
-            }
-            walletManager.restoreWalletFromEncrypted(file, password, version);
-        } catch (UnreadableWalletException e) {
-            logger.warn("Cannot restore wallet, UnreadableWalletException", e);
-            throw new CantRestoreEncryptedWallet(e);
-        }
+    public void restoreWalletFromEncrypted(File file, String password) throws CantRestoreEncryptedWallet, IOException {
+        walletManager.restoreWalletFromEncrypted(file,password);
+//
+//        try {
+//            int version = (forceRestoreVersion != -1) ? forceRestoreVersion : context.getCurrentVersionNumber();
+//            try {
+//                String filename = file.getName();
+//                // try to determine the version from the file's name
+//                version = Integer.parseInt(filename.substring(0, 1));
+//            } catch (Exception e) {
+//                // swallow
+//            }
+//            walletManager.restoreWalletFromEncrypted(file, password, version);
+//        } catch (UnreadableWalletException e) {
+//            logger.warn("Cannot restore wallet, UnreadableWalletException", e);
+//            throw new CantRestoreEncryptedWallet(e);
+//        }
     }
 
     @Override
@@ -180,16 +174,6 @@ public class PivxModuleImp implements PivxModule {
     @Override
     public Coin getUnnavailableBalanceCoin() {
         return walletManager.getUnspensableBalance();
-    }
-
-    @Override
-    public Coin getZpivAvailableBalanceCoin() {
-        return walletManager.getZpivAvailableBalance();
-    }
-
-    @Override
-    public Coin getZpivUnnavailableBalanceCoin() {
-        return walletManager.getZpivUnspendableBalance();
     }
 
     @Override
@@ -295,7 +279,7 @@ public class PivxModuleImp implements PivxModule {
         sendRequest.changeAddress = null;
         sendRequest.signInputs = true;
         sendRequest.shuffleOutputs = false;
-        walletManager.getWallet().completeSend(sendRequest);
+        walletManager.getWallet().completeTx(sendRequest);
         //walletManager.getWallet().signTransaction(sendRequest);
         return sendRequest.tx;
     }
@@ -369,7 +353,7 @@ public class PivxModuleImp implements PivxModule {
 
     public List<TransactionWrapper> listTx(Set<Transaction> walletTxes, boolean isPrivate) {
         List<TransactionWrapper> list = new ArrayList<>();
-        for (Transaction transaction : walletTxes) {
+        for (Transaction transaction : walletManager.listTransactions()) {
             boolean isMine = walletManager.isMine(transaction);
             boolean isStaking = false;
             Map<Integer,AddressLabel> outputsLabeled = new HashMap<>();
@@ -385,7 +369,7 @@ public class PivxModuleImp implements PivxModule {
                                 // if the tx is mine i know that the first output address is the sent and the second one is the change address
                                 outputsLabeled.put(transactionOutput.getIndex(), contactsStore.getContact(address.toBase58()));
                             }catch (ScriptException e){
-                                //logger.warn("unknown tx output, "+script.toString()+", is tx coinbase: "+transaction.isCoinBase());
+                                logger.warn("unknown tx output, "+script.toString()+", is tx coinbase: "+transaction.isCoinBase());
                                 e.printStackTrace();
                             }
                         }else if (script.isSentToRawPubKey()){
@@ -394,10 +378,8 @@ public class PivxModuleImp implements PivxModule {
                             // if the tx is mine i know that the first output address is the sent and the second one is the change address
                             outputsLabeled.put(transactionOutput.getIndex(), contactsStore.getContact(address.toBase58()));
                             isStaking = true;
-                        }else if (script.isZcMint()){
-                            outputsLabeled.put(transactionOutput.getIndex(), new AddressLabel("Mint"));
                         }else {
-                            logger.warn("unknown tx output FIXME, " + script);
+                            logger.warn("unknown tx output, "+script.toString()+", is tx coinbase: "+transaction.isCoinBase());
                         }
                     }
 
@@ -425,76 +407,27 @@ public class PivxModuleImp implements PivxModule {
                 }*/
 
                 for (TransactionOutput transactionOutput : transaction.getOutputs()) {
-                    try {
-                        Script script = transactionOutput.getScriptPubKey();
-                        if (script.isZcMint()){
-                            AddressLabel addressLabel = new AddressLabel("Mint");
-                            outputsLabeled.put(transactionOutput.getIndex(), addressLabel);
-                        }else {
-                            address = transactionOutput.getScriptPubKey().getToAddress(getConf().getNetworkParams(), true);
-                            // if the tx is mine i know that the first output address is the sent and the second one is the change address
-                            outputsLabeled.put(transactionOutput.getIndex(), contactsStore.getContact(address.toBase58()));
-                        }
-                    }catch (Exception e){
-                        logger.error("Exception",e);
-                    }
+                    address = transactionOutput.getScriptPubKey().getToAddress(getConf().getNetworkParams(),true);
+                    // if the tx is mine i know that the first output address is the sent and the second one is the change address
+                    outputsLabeled.put(transactionOutput.getIndex(),contactsStore.getContact(address.toBase58()));
                 }
             }
             TransactionWrapper wrapper;
             if (!isStaking){
-                // Check if a zc_spend
-                boolean isZcSpend = false;
-                for (TransactionInput transactionInput : transaction.getInputs()) {
-                    if (transactionInput.isZcspend() || transactionInput.getScriptBytes().length == 0){
-                        isZcSpend = true;
-                        break;
-                    }
-                }
-                boolean isZcMint = false;
-                for (TransactionOutput transactionOutput : transaction.getOutputs()) {
-                    if (transactionOutput.isZcMint()){
-                        isZcMint = true;
-                        break;
-                    }
-                }
-
-                TransactionWrapper.TransactionUse transactionUse;
-                if (!isZcSpend && !isZcMint)
-                    transactionUse = isMine ? TransactionWrapper.TransactionUse.SENT_SINGLE: TransactionWrapper.TransactionUse.RECEIVE;
-                else if (isZcSpend){
-                    transactionUse = TransactionWrapper.TransactionUse.ZC_SPEND;
-                }else {
-                    transactionUse = TransactionWrapper.TransactionUse.ZC_MINT;
-                }
-
-                Coin amount;
-                if (isMine){
-                    if (isZcMint){
-                        // TODO: Check me..
-                        amount = getZpivValueSentToMe(transaction); //isPrivate ? getZpivValueSentToMe(transaction) : getZpivValueSentToMe(transaction) ;
-                    }else if (isZcSpend){
-                        amount = isPrivate ? walletManager.getZpivValueSentFromMe(transaction) : walletManager.getValueSentToMe(transaction) ;
-                    }else
-                        amount = isPrivate ? getZpivValueSentToMe(transaction) : getValueSentFromMe(transaction,true) ;
-                }else
-                    amount = isPrivate ? walletManager.getZpivValueSentFromMe(transaction) : walletManager.getValueSentToMe(transaction);
-
                 wrapper = new TransactionWrapper(
                         transaction,
                         inputsLabeled,
                         outputsLabeled,
-                        amount,
-                        transactionUse,
-                        isPrivate
+                        isMine ? getValueSentFromMe(transaction,true):walletManager.getValueSentToMe(transaction),
+                        isMine ? TransactionWrapper.TransactionUse.SENT_SINGLE: TransactionWrapper.TransactionUse.RECEIVE
                 );
             }else {
                 wrapper = new TransactionWrapper(
                         transaction,
                         inputsLabeled,
                         outputsLabeled,
-                        isPrivate ? walletManager.getZpivValueSentFromMe(transaction) : walletManager.getValueSentToMe(transaction),
-                        TransactionWrapper.TransactionUse.STAKE,
-                        isPrivate
+                        walletManager.getValueSentToMe(transaction),
+                        TransactionWrapper.TransactionUse.STAKE
                 );
             }
             list.add(wrapper);
@@ -507,15 +440,6 @@ public class PivxModuleImp implements PivxModule {
         return listTx(walletManager.listTransactions(), false);
     }
 
-    @Override
-    public List<TransactionWrapper> listPrivateTxes(){
-        return listTx(walletManager.listPrivateTransactions(), true);
-    }
-
-    @Override
-    public Collection<Transaction> listPendingTxes(){
-        return walletManager.listPendingTransactions();
-    }
 
     @Override
     public Coin getValueSentFromMe(Transaction transaction, boolean excludeChangeAddress) {
@@ -523,11 +447,6 @@ public class PivxModuleImp implements PivxModule {
             return transaction.getOutput(0).getValue();
         }else
             return walletManager.getValueSentFromMe(transaction);
-    }
-
-    @Override
-    public Coin getZpivValueSentToMe(Transaction transaction){
-        return walletManager.getZpivValueSentToMe(transaction);
     }
 
     @Override
@@ -550,23 +469,25 @@ public class PivxModuleImp implements PivxModule {
         return blockchainManager;
     }
 
-    public void addCoinsReceivedEventListener(ExecutorService executor, WalletCoinsReceivedEventListener coinReceiverListener) {
-        walletManager.addCoinsReceivedEventListener(executor, coinReceiverListener);
+
+    public void addCoinsReceivedEventListener(WalletCoinsReceivedEventListener coinReceiverListener) {
+        walletManager.addCoinsReceivedEventListener(coinReceiverListener);
     }
 
     public void removeCoinsReceivedEventListener(WalletCoinsReceivedEventListener coinReceiverListener) {
         walletManager.removeCoinsReceivedEventListener(coinReceiverListener);
     }
 
-    public void addOnTransactionConfidenceChange(ExecutorService executor, TransactionConfidenceEventListener transactionConfidenceEventListener) {
-        walletManager.addOnTransactionsConfidenceChange(executor, transactionConfidenceEventListener);
+    public void addOnTransactionConfidenceChange(TransactionConfidenceEventListener transactionConfidenceEventListener) {
+        walletManager.addOnTransactionsConfidenceChange(transactionConfidenceEventListener);
     }
 
     public void removeTransactionsConfidenceChange(TransactionConfidenceEventListener transactionConfidenceEventListener) {
         walletManager.removeTransactionConfidenceChange(transactionConfidenceEventListener);
     }
 
-    public PivxRate getRate(String coin) {
+
+    public N8VRate getRate(String coin) {
         return rateDb.getRate(coin);
     }
 
@@ -587,46 +508,23 @@ public class PivxModuleImp implements PivxModule {
         return inputWrappers;
     }
 
-    @Override
-    public List<TransactionOutput> listZpivUnspents(){
-        return walletManager.listZpivUnspent();
-    }
 
     @Override
     public Set<InputWrapper> convertFrom(List<TransactionInput> list) throws TxNotFoundException {
         Set<InputWrapper> ret = new HashSet<>();
         for (TransactionInput input : list) {
-            if (input.isZcspend()){
-                TransactionOutput transactionOutput = input.getConnectedOutput();
-                if (transactionOutput == null) {
-                    TransactionOutPoint outPoint = input.getOutpoint();
-                    Sha256Hash prevParentHash = outPoint.getHash();
-                    if (prevParentHash.equals(Sha256Hash.ZERO_HASH)){
-                        CoinSpend spend = input.getScriptSig().getCoinSpend(input.getParams(), Context.zerocoinContext);
-                        transactionOutput = walletManager.getMintOutput(spend.getCoinSerialNumber());
-                    }
-                    if (transactionOutput != null)
-                        ret.add(
-                                new InputWrapper(
-                                        transactionOutput,
-                                        new AddressLabel("Anonymous")
-                                )
-                        );
-                }
-            }else {
-                TransactionOutput transactionOutput = input.getConnectedOutput();
-                if (transactionOutput == null) {
-                    transactionOutput = getUnspent(input.getOutpoint().getHash(), (int) input.getOutpoint().getIndex());
-                }
-                Address address = transactionOutput.getScriptPubKey().getToAddress(getConf().getNetworkParams(), true);
-                AddressLabel addressLabel = contactsStore.getContact(address.toBase58());
-                ret.add(
-                        new InputWrapper(
-                                transactionOutput,
-                                addressLabel
-                        )
-                );
+            TransactionOutput transactionOutput = input.getConnectedOutput();
+            if (transactionOutput==null){
+                transactionOutput = getUnspent(input.getOutpoint().getHash(), (int) input.getOutpoint().getIndex());
             }
+            Address address = transactionOutput.getScriptPubKey().getToAddress(getConf().getNetworkParams(),true);
+            AddressLabel addressLabel = contactsStore.getContact(address.toBase58());
+            ret.add(
+                    new InputWrapper(
+                            transactionOutput,
+                            addressLabel
+                    )
+            );
         }
         return ret;
     }
@@ -758,7 +656,7 @@ public class PivxModuleImp implements PivxModule {
     }
 
     @Override
-    public List<PivxRate> listRates() {
+    public List<N8VRate> listRates() {
         return rateDb.list();
     }
 
@@ -802,41 +700,6 @@ public class PivxModuleImp implements PivxModule {
     }
 
     @Override
-    public SendRequest createMint(Coin value) throws InsufficientMoneyException {
-        return walletManager.createMint(value);
-    }
-
-    @Override
-    public SendRequest createSpend(Address to, Coin amount, boolean mintChange) throws InsufficientMoneyException {
-        return walletManager.createSpend(to, amount, mintChange);
-    }
-
-    @Override
-    public Transaction spendZpiv(Context context, SendRequest sendRequest, PeerGroup peerGroup, ExecutorService executor) throws InsufficientMoneyException, CannotSpendCoinsException, RequestFailedErrorcodeException {
-        return walletManager.spendZpiv(sendRequest, peerGroup, executor, context.zerocoinContext.jniBridge);
-    }
-
-    @Override
-    public ZCoin getAssociatedCoin(BigInteger commitmentValue) {
-        return walletManager.getAssociatedCoin(commitmentValue);
-    }
-
-    @Override
-    public boolean isEveryOutputSpent(Transaction transaction, MultiWallet.WalletType type) {
-        return walletManager.getWallet().isEveryOutputSpent(transaction, type);
-    }
-
-    @Override
-    public List<AmountPerDen> listAmountPerDen() {
-        return walletManager.listAmountPerDen();
-    }
-
-    @Override
-    public Map<CoinDenomination, HashSet<ZCoin>> getAllMintedZCoins(){
-        return walletManager.getAllMintedZCoins();
-    }
-
-    @Override
     public boolean isStarted() {
         return walletManager.isStarted();
     }
@@ -847,12 +710,12 @@ public class PivxModuleImp implements PivxModule {
     }
 
 
-    public void saveRate(PivxRate pivxRate){
-        rateDb.insertOrUpdateIfExist(pivxRate);
+    public void saveRate(N8VRate n8VRate){
+        rateDb.insertOrUpdateIfExist(n8VRate);
     }
 
 
-    public MultiWallet getWallet(){
+    public Wallet getWallet(){
         return walletManager.getWallet();
     }
 }

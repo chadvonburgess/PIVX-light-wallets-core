@@ -47,12 +47,9 @@ import java.util.concurrent.TimeUnit;
 import global.ContextWrapper;
 import global.PivtrumGlobalData;
 import global.WalletConfiguration;
-import host.furszy.zerocoinj.store.RollbackBlockStore;
 import pivtrum.PivtrumPeerData;
 import wallet.WalletManager;
 
-import static global.PivtrumGlobalData.FURSZY_TESTNET_SERVER;
-import static global.PivtrumGlobalData.MAINNET_NODE;
 
 public class BlockchainManager {
 
@@ -77,7 +74,6 @@ public class BlockchainManager {
     private PeerGroup peerGroup;
 
     private List<BlockchainManagerListener> blockchainManagerListeners;
-
 
     public BlockchainManager(ContextWrapper contextWrapper,WalletManager walletManager, WalletConfiguration conf) {
         this.walletManager = walletManager;
@@ -233,7 +229,7 @@ public class BlockchainManager {
             LOG.info("peergroup stopped");
         }
     }
-
+/*
     public void rollbackTo(int height){
         // Stop peergroup
         stopPeerGroup();
@@ -259,7 +255,8 @@ public class BlockchainManager {
             blockChain = null;
             blockStore = null;
         }
-    }
+    }*/
+
     public void destroy(boolean resetBlockchainOnShutdown) {
         // Stop peergroup
         stopPeerGroupSync();
@@ -280,12 +277,13 @@ public class BlockchainManager {
 
         if (resetBlockchainOnShutdown) {
             LOG.info("removing blockchain");
-            try{
-                if (conf.getWalletContext().accStore != null)
-                    conf.getWalletContext().accStore.truncate();
-            }catch (Exception e){
-                // swallow
-            }
+            //todo look at this maybe being different
+//            try{
+//                if (conf.getWalletContext().accStore != null)
+//                    conf.getWalletContext().accStore.truncate();
+//            }catch (Exception e){
+//                // swallow
+//            }
 
             try{
                 if (blockStore instanceof TruncableStore){
@@ -311,8 +309,7 @@ public class BlockchainManager {
                       PeerConnectedEventListener peerConnectivityListener,
                       PeerDisconnectedEventListener peerDisconnectedEventListener ,
                       PeerDataEventListener blockchainDownloadListener,
-                      PreMessageReceivedEventListener preMessageReceivedEventListener,
-                      Executor executor){
+                      PreMessageReceivedEventListener preMessageReceivedEventListener){
         synchronized (this) {
 
             if (impediments.isEmpty() && peerGroup == null) {
@@ -337,19 +334,12 @@ public class BlockchainManager {
                 peerGroup.setDownloadTxDependencies(0); // recursive implementation causes StackOverflowError
                 walletManager.addWalletFrom(peerGroup);
                 peerGroup.setUserAgent(USER_AGENT, context.getVersionName());
-                if (executor != null) {
-                    peerGroup.addConnectedEventListener(executor, peerConnectivityListener);
-                    peerGroup.addDisconnectedEventListener(executor, peerDisconnectedEventListener);
 
-                    if (preMessageReceivedEventListener != null)
-                        peerGroup.addPreMessageReceivedEventListener(executor, preMessageReceivedEventListener);
-                }else {
                     peerGroup.addConnectedEventListener(peerConnectivityListener);
                     peerGroup.addDisconnectedEventListener(peerDisconnectedEventListener);
 
                     if (preMessageReceivedEventListener != null)
                         peerGroup.addPreMessageReceivedEventListener(preMessageReceivedEventListener);
-                }
 
                 // Memory check
                 final int maxConnectedPeers = context.isMemoryLow() ? 4 : 6 ;
@@ -378,9 +368,6 @@ public class BlockchainManager {
                         }
                     });
                 } else {
-                    if (conf.isDNSDiscoveryEnabled())
-                        peerGroup.addPeerDiscovery(new DnsDiscovery(conf.getNetworkParams()));
-                    else
                         peerGroup.addPeerDiscovery(new PeerDiscovery() {
 
                             private final PeerDiscovery normalPeerDiscovery = MultiplexingDiscovery.forServices(conf.getNetworkParams(), 0);
